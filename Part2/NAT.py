@@ -29,7 +29,15 @@ def callback(indata, outdata, frames, time, status):
         outdata.fill(0)
 
     if global_status == "send data":
-        outdata[:]
+        global global_input_index
+        global TxFrame
+        if len(TxFrame) - global_input_index > frames:
+            outdata[:] = np.array(TxFrame[global_input_index:global_input_index + frames]).reshape(frames, 1)
+        else:
+            if len(TxFrame) - global_input_index >= 0:
+                outdata[:] = np.append(TxFrame[global_input_index:],
+                                       np.zeros(frames - len(TxFrame) + global_input_index)).reshape(frames, 1)
+        global_input_index += frames
 
 def gen_data(pre_data, src_address, dest_address):
     """translate payload into Athernet packet"""
