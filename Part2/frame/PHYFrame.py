@@ -54,9 +54,24 @@ class PhyFrame:
         """get the type of frame"""
         return self.phy_load.get_type()
 
-    def set_type(self, type):
+    def set_type(self, data_type):
         """set the type of frame"""
-        self.phy_load.set_type(type)
+        self.phy_load.set_type(data_type)
+
+    def set_src_ip(self, src_ip):
+        self.phy_load.load.set_src_ip(src_ip)
+
+    def set_dest_ip(self, dest_ip):
+        self.phy_load.load.set_dest_ip(dest_ip)
+
+    def set_src_port(self, src_port):
+        self.phy_load.load.set_src_port(src_port)
+
+    def set_dest_port(self, dest_port):
+        self.phy_load.load.set_dest_port(dest_port)
+
+    def set_load(self, load):
+        self.phy_load.load.set_load(load)
 
     def get_src_ip(self):
         return self.phy_load.load.get_src_ip()
@@ -72,3 +87,6 @@ class PhyFrame:
 
     def get_load(self):
         return self.phy_load.load.get_load()
+
+    def set_CRC(self):
+        self.CRC = gen_CRC8(self.phy_load.get())

@@ -1,9 +1,8 @@
-# NAT to translate Athernet data packet and send it through socket
-import socket
-
-from Part2.all_globals import *
+# Node3
+from Part2.config.globalConfig import *
 from Part2.frame.PHYFrame import *
 from Part2.config.Type import *
+from all_globals import *
 
 
 def set_stream():
@@ -31,10 +30,16 @@ def callback(indata, outdata, frames, time, status):
     if global_status == "send data":
         outdata[:]
 
-def gen_data(pre_data, src_address, dest_address):
-    """translate payload into Athernet packet"""
+
+def gen_data(file_name, src_address, dest_address):
+    with open(file_name, "rb") as f:
+        data = f.read()
     athernet_frames = []
-    for data in pre_data:
+    input_index = 0
+    frame_num = int(len(data) / bytes_per_frame)
+    if frame_num * bytes_per_frame < len(data):
+        frame_num += 1
+    for i in range(frame_num):
         frame = PhyFrame()
         frame.set_type(data_frame)
         frame.set_src_ip(src_address[0])
@@ -42,8 +47,13 @@ def gen_data(pre_data, src_address, dest_address):
         frame.set_dest_ip(dest_address[0])
         frame.set_dest_port(dest_address[1])
         byte_bit_str_buffer = ""
-        for by in data:
-            byte_bit_str_buffer += byte_to_str(by)
+        for j in range(bytes_per_frame):
+            if input_index < len(data):
+                byte_bit_str_buffer += byte_to_str(data[input_index])
+                input_index += 1
+            else:
+                byte_bit_str_buffer += "00000000"
+
         frame.set_load(byte_bit_str_buffer)
         frame.set_CRC()
         athernet_frames.append(frame)
@@ -60,8 +70,19 @@ def send_athernet_data():
     global_status = ""
 
 
-def athernet_to_internet():
-    """ translate athernet packet to internet packet """
+def send_data():
+    global Txframe
+    frames = gen_data("INPUT.txt", (node3_ip, node3_port), (NAT_athernet_ip, NAT_port))
+    for frame in frames:
+        TxFrame = frame.get_modulated_frame()[:]
+        send_athernet_data()
+        TxFrame = []
+    print("Node3 sending data finished")
+
+
+def receive_data():
+    stream = set_stream()
+    stream.start()
     global global_buffer
     global global_pointer
     global detected_frames
@@ -73,7 +94,6 @@ def athernet_to_internet():
     stream.start()
     pointer = global_pointer
     UDP_payload = []
-    # First to receive data from athernet
     while detected_frames < frame_num:
         if pointer + block_size > len(global_buffer):
             continue
@@ -104,37 +124,7 @@ def athernet_to_internet():
             print("CRC broken!")
         pointer += block_size
 
-    print("Athernet receiving finished!")
-
-    # sending internet data
-    sck = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    for data in UDP_payload:
-        sck.sendto(data, (dest_ip, dest_port))
-    sck.close()
-    print("Finish sending")
-
-
-def internet_to_athernet():
-    # first to receive data from node1
-    all_data = []
-    node1_address = None
-    sck = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    address = (NAT_internet_ip, NAT_port)
-    sck.bind(address)
-    while True:
-        data, node1_address = sck.recvfrom(20)
-        all_data.append(data)
-        if len(data) == 0:
-            break
-    sck.close()
-    print("receiving from node1 finished")
-
-    global TxFrame
-    # then send data to node3
-    frames = gen_data(all_data, (NAT_athernet_ip, NAT_port), (node3_ip, node3_port))
-
-    for frame in frames:
-        TxFrame = frame.get_modulated_frame()[:]
-        send_athernet_data()
-        TxFrame = []
-    print("sending data to node3 finished")
+    print("receiving data finished... showing contents...")
+    for content in UDP_payload:
+        print("IP: ", src_ip, " Port: ", src_port)
+        print("content: ", content)

@@ -36,7 +36,7 @@ class MACFrame:
 
     def get(self):
         """get the whole MAC frame in the form of string"""
-        return self.type + self.load
+        return self.type + self.load.get()
 
     def get_data(self):
         return self.load

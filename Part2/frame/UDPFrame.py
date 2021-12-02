@@ -33,6 +33,9 @@ class UDPFrame:
         self.dest_port = None
         self.load = None
 
+    def get(self):
+        return self.src_ip + self.dest_ip + self.src_port + self.dest_port + self.load
+
     def set_src_ip(self, src_ip):
         self.src_ip = src_ip
 
