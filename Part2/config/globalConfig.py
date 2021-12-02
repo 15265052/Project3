@@ -140,6 +140,12 @@ def translate_ip_to_bits(ip_address):
     assert len(ip_bits) == 4 * 8
     return ip_bits
 
+def translate_port_to_bits(port):
+    assert isinstance(port, int)
+    port_bi = bin(port)[2:]
+    port_bits = (16 - len(port_bi)) * "0" + port_bi
+    assert len(port_bits) == 16
+    return port_bits
 
 def decode_to_bits(frame):
     str_decoded = ""

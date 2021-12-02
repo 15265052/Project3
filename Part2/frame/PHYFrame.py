@@ -70,6 +70,12 @@ class PhyFrame:
     def set_dest_port(self, dest_port):
         self.phy_load.load.set_dest_port(dest_port)
 
+    def set_phy_load(self, phy_load):
+        self.phy_load = phy_load
+
+    def set_MAC_load(self, MAC_load):
+        self.phy_load.set_load(MAC_load)
+
     def set_load(self, load):
         self.phy_load.load.set_load(load)
 

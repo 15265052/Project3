@@ -46,9 +46,6 @@ class MACFrame:
         self.type = type
 
     def set_load(self, load):
-        if len(load) > MAC_load_limit:
-            print("load overflows!")
-            return
         self.load = load
 
     def get_type(self):

@@ -1,4 +1,6 @@
 # Node3
+import struct
+
 from Part2.config.globalConfig import *
 from Part2.frame.PHYFrame import *
 from Part2.config.Type import *
@@ -42,6 +44,7 @@ def callback(indata, outdata, frames, time, status):
 def gen_data(file_name, src_address, dest_address):
     with open(file_name, "rb") as f:
         data = f.read()
+    data = struct.unpack("c" * len(data), data)
     athernet_frames = []
     input_index = 0
     frame_num = int(len(data) / bytes_per_frame)
@@ -49,11 +52,13 @@ def gen_data(file_name, src_address, dest_address):
         frame_num += 1
     for i in range(frame_num):
         frame = PhyFrame()
+        frame.set_phy_load(MACFrame())
+        frame.set_MAC_load(UDPFrame())
         frame.set_type(data_frame)
-        frame.set_src_ip(src_address[0])
-        frame.set_src_port(src_address[1])
-        frame.set_dest_ip(dest_address[0])
-        frame.set_dest_port(dest_address[1])
+        frame.set_src_ip(translate_ip_to_bits(src_address[0]))
+        frame.set_src_port(translate_port_to_bits(src_address[1]))
+        frame.set_dest_ip(translate_ip_to_bits(dest_address[0]))
+        frame.set_dest_port(translate_port_to_bits(dest_address[1]))
         byte_bit_str_buffer = ""
         for j in range(bytes_per_frame):
             if input_index < len(data):
@@ -80,11 +85,14 @@ def send_athernet_data():
 
 def send_data():
     global Txframe
+    stream = set_stream()
+    stream.start()
     frames = gen_data("INPUT.txt", (node3_ip, node3_port), (NAT_athernet_ip, NAT_port))
     for frame in frames:
         TxFrame = frame.get_modulated_frame()[:]
         send_athernet_data()
         TxFrame = []
+    stream.stop()
     print("Node3 sending data finished")
 
 
@@ -136,3 +144,5 @@ def receive_data():
     for content in UDP_payload:
         print("IP: ", src_ip, " Port: ", src_port)
         print("content: ", content)
+
+send_data()
