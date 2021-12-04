@@ -25,6 +25,10 @@ def callback(indata, outdata, frames, time, status):
     global global_status
     global TxFrame
     global_buffer = np.append(global_buffer, indata[:, 0])
+    if np.average(np.abs(indata[:, 0]) > 0.005):
+        is_noisy = True
+    else:
+        is_noisy = False
     if global_status == "":
         # when not sending, then receiving
         outdata.fill(0)
@@ -40,6 +44,13 @@ def callback(indata, outdata, frames, time, status):
                                        np.zeros(frames - len(TxFrame) + global_input_index)).reshape(frames, 1)
         global_input_index += frames
 
+    if global_status == "sending ACK":
+        global ACK_buffer
+        global ACK_pointer
+        global_status = ""
+        outdata[:] = np.append(ACK_buffer[ACK_pointer], np.zeros(frames - len(ACK_buffer[ACK_pointer]))).reshape(frames,
+                                                                                                                 1)
+        ACK_pointer += 1
 
 def gen_data(file_name, src_address, dest_address):
     with open(file_name, "rb") as f:
@@ -71,7 +82,7 @@ def gen_data(file_name, src_address, dest_address):
         frame.set_load(byte_bit_str_buffer)
         frame.set_CRC()
         if i == 0:
-            print(check_CRC8(frame.get_phy_load().get()+frame.num + frame.CRC))
+            print(check_CRC8(frame.get_phy_load().get() + frame.num + frame.CRC))
         athernet_frames.append(frame)
     return athernet_frames
 
@@ -166,6 +177,14 @@ def send_data():
     print("Node3 sending data finished")
 
 
+def send_ACK(n_frame):
+    global global_status
+    global ACK_buffer
+    global ACK_predefined
+    ACK_buffer.append(ACK_predefined[n_frame])
+    global_status = "sending ACK"
+
+
 def receive_data():
     stream = set_stream()
     stream.start()
@@ -179,7 +198,7 @@ def receive_data():
     stream = set_stream()
     stream.start()
     pointer = global_pointer
-    UDP_payload = []
+    UDP_payload = [None] * frame_num
     while detected_frames < frame_num:
         if pointer + block_size > len(global_buffer):
             continue
@@ -197,6 +216,12 @@ def receive_data():
                 # CRC correct, starting decode ip and port
                 phy_frame = PhyFrame()
                 phy_frame.from_array(frame_in_bits)
+                n_frame = phy_frame.get_decimal_num()
+                print("sending ACK: ", n_frame)
+                send_ACK(n_frame)
+                if not frame_confirmed[n_frame]:
+                    frame_confirmed[n_frame] = True
+                    detected_frames += 1
                 if src_ip is None:
                     src_ip = decode_ip(phy_frame.get_src_ip())
                 if src_port is None:
@@ -205,7 +230,7 @@ def receive_data():
                     dest_ip = decode_ip(phy_frame.get_dest_ip())
                 if dest_port is None:
                     dest_port = decode_port((phy_frame.get_dest_port()))
-                UDP_payload.append(str_to_byte(phy_frame.get_load()))
+                UDP_payload[n_frame] = str_to_byte(phy_frame.get_load())
         else:
             print("CRC broken!")
         pointer += block_size

@@ -16,4 +16,6 @@ ACK_confirmed = [False]*frame_num
 frame_confirmed = [False] * frame_num
 frame_rece = [None] * frame_num
 frame_retransmit = [0] * frame_num
+is_noisy = True
+ACK_pointer = 0
 max_retransmit = 7
