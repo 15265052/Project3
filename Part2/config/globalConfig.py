@@ -140,12 +140,14 @@ def translate_ip_to_bits(ip_address):
     assert len(ip_bits) == 4 * 8
     return ip_bits
 
+
 def translate_port_to_bits(port):
     assert isinstance(port, int)
     port_bi = bin(port)[2:]
     port_bits = (16 - len(port_bi)) * "0" + port_bi
     assert len(port_bits) == 16
     return port_bits
+
 
 def decode_to_bits(frame):
     str_decoded = ""
@@ -176,8 +178,8 @@ def decode_port(port_bits):
 
 
 sample_rate = 48000
-signal0 = [0.5, 0.5, -0.5, -0.5]
-signal1 = [-0.5, -0.5, 0.5, 0.5]
+signal0 = [0.5, 0.5, 0.5, -0.5, -0.5, -0.5]
+signal1 = [-0.5, -0.5, -0.5, 0.5, 0.5, 0.5]
 latency = 0.0015
 block_size = 2048
 threshold = 10
@@ -186,10 +188,10 @@ preamble = gen_preamble()
 preamble_length = len(preamble)
 
 bins_per_byte = 8
-samples_per_bin = 4
-frame_num = 250
+samples_per_bin = 6
+frame_num = 109
 frame_num_2 = 200
-bytes_per_frame = 20
+bytes_per_frame = 10
 ip_bit_length = 4 * 8
 payload_length = bytes_per_frame * bins_per_byte * samples_per_bin
 CRC_length = 8 * samples_per_bin
@@ -197,15 +199,15 @@ type_length = 4 * samples_per_bin
 ip_length = samples_per_bin * ip_bit_length
 port_length = 16 * samples_per_bin
 frame_length = preamble_length + type_length + 2 * ip_length + 2 * port_length + payload_length + CRC_length
-frame_length_in_bit = int(frame_length / samples_per_bin)
+frame_length_in_bit = int((frame_length - preamble_length) / samples_per_bin)
 
 node1_ip = "10.20.234.160"
 NAT_athernet_ip = "192.168.1.1"
 NAT_internet_ip = "10.20.84.36"
 node3_ip = "192.168.1.2"
 node3_port = 9527
+node1_port = 9527
 NAT_port = 9527
 
 retransmit_time = 0.18
 max_retransmit = 10
-

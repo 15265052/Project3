@@ -2,8 +2,8 @@
 import numpy as np
 
 sample_rate = 48000
-signal0 = [0.5, 0.5, -0.5, -0.5]
-signal1 = [-0.5, -0.5, 0.5, 0.5]
+signal0 = [0.5, 0.5, 0.5, -0.5, -0.5, -0.5]
+signal1 = [-0.5, -0.5, -0.5, 0.5, 0.5, 0.5]
 
 
 def modulate_string(string):

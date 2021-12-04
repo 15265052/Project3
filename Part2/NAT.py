@@ -7,7 +7,7 @@ from Part2.config.Type import *
 
 
 def set_stream():
-    asio_id = 10
+    asio_id = 12
     asio_in = sd.AsioSettings(channel_selectors=[0])
     asio_out = sd.AsioSettings(channel_selectors=[1])
 
@@ -39,16 +39,19 @@ def callback(indata, outdata, frames, time, status):
                                        np.zeros(frames - len(TxFrame) + global_input_index)).reshape(frames, 1)
         global_input_index += frames
 
+
 def gen_data(pre_data, src_address, dest_address):
     """translate payload into Athernet packet"""
     athernet_frames = []
     for data in pre_data:
         frame = PhyFrame()
+        frame.set_phy_load(MACFrame())
+        frame.set_MAC_load(UDPFrame())
         frame.set_type(data_frame)
-        frame.set_src_ip(src_address[0])
-        frame.set_src_port(src_address[1])
-        frame.set_dest_ip(dest_address[0])
-        frame.set_dest_port(dest_address[1])
+        frame.set_src_ip(translate_ip_to_bits(src_address[0]))
+        frame.set_src_port(translate_port_to_bits(src_address[1]))
+        frame.set_dest_ip(translate_ip_to_bits(dest_address[0]))
+        frame.set_dest_port(translate_port_to_bits(dest_address[1]))
         byte_bit_str_buffer = ""
         for by in data:
             byte_bit_str_buffer += byte_to_str(by)
@@ -82,6 +85,7 @@ def athernet_to_internet():
     pointer = global_pointer
     UDP_payload = []
     # First to receive data from athernet
+    print("start to receive athernet packet")
     while detected_frames < frame_num:
         if pointer + block_size > len(global_buffer):
             continue
@@ -96,6 +100,7 @@ def athernet_to_internet():
             frame_detected = global_buffer[pointer: pointer + frame_length - preamble_length]
             frame_in_bits = decode_to_bits(frame_detected)
             if check_CRC8(frame_in_bits):
+                print("frame received all frames: ", detected_frames)
                 # CRC correct, starting decode ip and port
                 phy_frame = PhyFrame()
                 phy_frame.from_array(frame_in_bits)
@@ -108,8 +113,10 @@ def athernet_to_internet():
                 if dest_port is None:
                     dest_port = decode_port((phy_frame.get_dest_port()))
                 UDP_payload.append(str_to_byte(phy_frame.get_load()))
-        else:
-            print("CRC broken!")
+            else:
+                print("CRC broken!")
+            pointer += frame_length - preamble_length
+            continue
         pointer += block_size
 
     print("Athernet receiving finished!")
@@ -117,7 +124,10 @@ def athernet_to_internet():
     # sending internet data
     sck = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     for data in UDP_payload:
-        sck.sendto(data, (dest_ip, dest_port))
+        byte_str = b''
+        for byte in data:
+            byte_str += byte
+        sck.sendto(byte_str, (node1_ip, node1_port))
     sck.close()
     print("Finish sending")
 
@@ -146,3 +156,6 @@ def internet_to_athernet():
         send_athernet_data()
         TxFrame = []
     print("sending data to node3 finished")
+
+
+athernet_to_internet()

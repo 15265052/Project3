@@ -26,24 +26,26 @@ class PhyFrame:
      """
 
     def __init__(self):
+        self.num = None
         self.phy_load = None
         self.CRC = None
 
     def from_array(self, frame_array):
         """setting from the detected array, preamble is excluded"""
         self.phy_load = MACFrame()
-        self.set_type(frame_array[:8])
+        self.set_type(frame_array[:4])
         self.phy_load.load = UDPFrame()
-        self.phy_load.load.set_src_ip(frame_array[8:40])
-        self.phy_load.load.set_dest_ip(frame_array[40:72])
-        self.phy_load.load.set_src_port(frame_array[72:88])
-        self.phy_load.load.set_dest_port(frame_array[88:104])
-        self.phy_load.load.set_load(frame_array[104:264])
-        self.CRC = frame_array[264:]
+        self.phy_load.load.set_src_ip(frame_array[4:4+ip_bit_length])
+        self.phy_load.load.set_dest_ip(frame_array[4+ip_bit_length:4+2*ip_bit_length])
+        self.phy_load.load.set_src_port(frame_array[4+2*ip_bit_length:4+2*ip_bit_length+16])
+        self.phy_load.load.set_dest_port(frame_array[4+2*ip_bit_length+16:4+2*ip_bit_length+32])
+        self.phy_load.load.set_load(frame_array[4+2*ip_bit_length+32:4+2*ip_bit_length+32+80])
+        self.num = frame_array[-16:-8]
+        self.CRC = frame_array[-8:]
 
     def get_modulated_frame(self):
         """ Add preamble to the head, get whole modulated frame"""
-        phy_frame = np.concatenate([preamble, self.phy_load.modulate()], dtype=object)
+        phy_frame = np.concatenate([preamble, modulate_string(self.num), self.phy_load.modulate(), modulate_string(self.CRC)], dtype=object)
         return phy_frame
 
     def get_phy_load(self):
@@ -95,4 +97,9 @@ class PhyFrame:
         return self.phy_load.load.get_load()
 
     def set_CRC(self):
-        self.CRC = gen_CRC8(self.phy_load.get())
+        self.CRC = gen_CRC8(self.num+self.phy_load.get())[-8:]
+
+    def set_num(self, num):
+        temp_str = bin(num)[2:]
+        temp_str = (8 - len(temp_str)) * '0' + temp_str
+        self.num = temp_str
