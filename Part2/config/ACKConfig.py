@@ -11,7 +11,10 @@ def predefine_ACK():
 def single_ACK(num):
     """generate a single ACK frame"""
     ACK_frame = PhyFrame()
+    ACK_frame.set_phy_load(MACFrame())
+    ACK_frame.set_type(ACK)
     ACK_frame.set_num(num)
+    ACK_frame.set_CRC()
     return ACK_frame.get_modulated_frame()
 
 

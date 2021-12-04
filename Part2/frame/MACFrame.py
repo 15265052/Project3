@@ -36,6 +36,8 @@ class MACFrame:
 
     def get(self):
         """get the whole MAC frame in the form of string"""
+        if self.load is None:
+            return self.type
         return self.type + self.load.get()
 
     def get_data(self):
@@ -53,4 +55,6 @@ class MACFrame:
 
     def modulate(self):
         """modulate the whole frame into signals"""
+        if self.load is None:
+            return modulate_string(self.type)
         return np.concatenate([modulate_string(self.type), self.load.modulate()])

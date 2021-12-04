@@ -2,9 +2,8 @@
 import socket
 
 from Part2.all_globals import *
-from Part2.frame.PHYFrame import *
 from Part2.config.Type import *
-
+from Part2.config.ACKConfig import *
 
 def set_stream():
     asio_id = 12
@@ -38,6 +37,14 @@ def callback(indata, outdata, frames, time, status):
                 outdata[:] = np.append(TxFrame[global_input_index:],
                                        np.zeros(frames - len(TxFrame) + global_input_index)).reshape(frames, 1)
         global_input_index += frames
+
+    if global_status == "sending ACK":
+        global ACK_buffer
+        global ACK_pointer
+        global_status = ""
+        outdata[:] = np.append(ACK_buffer[ACK_pointer], np.zeros(frames - len(ACK_buffer[ACK_pointer]))).reshape(frames,
+                                                                                                                 1)
+        ACK_pointer += 1
 
 
 def gen_data(pre_data, src_address, dest_address):
@@ -73,6 +80,19 @@ def send_athernet_data():
         global_status = "send data"
     global_status = ""
 
+def decode_ACK_bits(ACK_buffer):
+    # first to convert all samples to bits
+    str_decoded = ""
+    pointer = 0
+    ACK_length_in_bit = 20
+    for i in range(ACK_length_in_bit):
+        decode_buffer = ACK_buffer[pointer: pointer + samples_per_bin]
+        if np.sum(decode_buffer * signal0) > 0:
+            str_decoded += '0'
+        else:
+            str_decoded += '1'
+        pointer += samples_per_bin
+    return str_decoded
 
 def check_ACK(range1, range2, data):
     """
@@ -86,9 +106,13 @@ def check_ACK(range1, range2, data):
         pointer_ACK = detect_preamble(global_buffer[global_pointer:global_pointer + 1024])
         if not pointer_ACK == 'error':
             global_pointer += pointer_ACK
-            ACK_frame = int(self.decode_ACK(global_buffer[global_pointer:global_pointer + samples_per_bin * 8]), 2)
-            if not ACK_confirmed[ACK_frame]:
-                print("ACK ", ACK_frame, " received!")
+            ACK_frame_array = global_buffer[global_pointer: global_pointer + 20 * samples_per_bin]
+            ACK_frame = PhyFrame()
+            ACK_frame.from_array(decode_ACK_bits(ACK_frame_array))
+            if ACK_frame.check():
+                if not ACK_confirmed[ACK_frame.get_decimal_num()]:
+                    print("ACK ", ACK_frame.get_decimal_num(), " received!")
+                    ACK_confirmed[ACK_frame.get_decimal_num()] = True
                 ACK_confirmed[ACK_frame] = True
             global_pointer += 48
         global_pointer += 1024
@@ -111,6 +135,14 @@ def check_ACK(range1, range2, data):
                     TxFrame = []
                     res = False
     return res
+
+
+def send_ACK(n_frame):
+    global global_status
+    global ACK_buffer
+    global ACK_predefined
+    ACK_buffer.append(ACK_predefined[n_frame])
+    global_status = "sending ACK"
 
 
 def athernet_to_internet():
@@ -142,10 +174,13 @@ def athernet_to_internet():
             frame_detected = global_buffer[pointer: pointer + frame_length - preamble_length]
             frame_in_bits = decode_to_bits(frame_detected)
             if check_CRC8(frame_in_bits):
-                print("frame received all frames: ", detected_frames)
-                # CRC correct, starting decode ip and port
                 phy_frame = PhyFrame()
                 phy_frame.from_array(frame_in_bits)
+                n_frame = phy_frame.get_decimal_num()
+                print("sending ACK: ", n_frame)
+                send_ACK(n_frame)
+                # CRC correct, starting decode ip and port
+
                 if src_ip is None:
                     src_ip = decode_ip(phy_frame.get_src_ip())
                 if src_port is None:
