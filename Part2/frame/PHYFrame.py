@@ -51,7 +51,7 @@ class PhyFrame:
     def get_modulated_frame(self):
         """ Add preamble to the head, get whole modulated frame"""
         phy_frame = np.concatenate(
-            [preamble, modulate_string(self.num), self.phy_load.modulate(), modulate_string(self.CRC)], dtype=object)
+            [preamble, self.phy_load.modulate(), modulate_string(self.num), modulate_string(self.CRC)], dtype=object)
         return phy_frame
 
     def get_phy_load(self):
@@ -106,7 +106,7 @@ class PhyFrame:
         if self.phy_load is None:
             self.CRC = gen_CRC8(self.num)[-8:]
         else:
-            self.CRC = gen_CRC8(self.num + self.phy_load.get())[-8:]
+            self.CRC = gen_CRC8(self.phy_load.get()+self.num)[-8:]
 
     def set_num(self, num):
         temp_str = bin(num)[2:]
@@ -124,7 +124,7 @@ class PhyFrame:
 
         :param physical_frame an array composed of physical frame w/o preamble
         """
-        if check_CRC8(self.num + self.phy_load.get() + self.CRC):
+        if check_CRC8(self.phy_load.get() + self.num + self.CRC):
             return True
         else:
             return False

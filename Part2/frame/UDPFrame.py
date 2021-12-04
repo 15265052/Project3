@@ -69,4 +69,4 @@ class UDPFrame:
     def modulate(self):
         return np.concatenate(
             [modulate_string(self.src_ip), modulate_string(self.dest_ip), modulate_string(self.src_port),
-             modulate_string(self.dest_port), modulate_string(self.load), modulate_string(self.load)])
+             modulate_string(self.dest_port), modulate_string(self.load)])
