@@ -216,4 +216,4 @@ def receive_data():
         print("content: ", content)
 
 
-send_data()
+receive_data()
