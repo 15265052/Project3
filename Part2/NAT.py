@@ -43,6 +43,7 @@ def callback(indata, outdata, frames, time, status):
 def gen_data(pre_data, src_address, dest_address):
     """translate payload into Athernet packet"""
     athernet_frames = []
+    i = 0
     for data in pre_data:
         frame = PhyFrame()
         frame.set_phy_load(MACFrame())
@@ -52,12 +53,14 @@ def gen_data(pre_data, src_address, dest_address):
         frame.set_src_port(translate_port_to_bits(src_address[1]))
         frame.set_dest_ip(translate_ip_to_bits(dest_address[0]))
         frame.set_dest_port(translate_port_to_bits(dest_address[1]))
+        frame.set_num(i)
         byte_bit_str_buffer = ""
         for by in data:
             byte_bit_str_buffer += byte_to_str(by)
         frame.set_load(byte_bit_str_buffer)
         frame.set_CRC()
         athernet_frames.append(frame)
+        i += 1
     return athernet_frames
 
 
@@ -69,6 +72,45 @@ def send_athernet_data():
     while global_input_index < len(TxFrame):
         global_status = "send data"
     global_status = ""
+
+
+def check_ACK(range1, range2, data):
+    """
+    check if ACK received from range1 to range2
+    retransmit frame if time out
+    """
+    global global_buffer
+    global TxFrame
+    global global_pointer
+    while global_pointer < len(global_buffer):
+        pointer_ACK = detect_preamble(global_buffer[global_pointer:global_pointer + 1024])
+        if not pointer_ACK == 'error':
+            global_pointer += pointer_ACK
+            ACK_frame = int(self.decode_ACK(global_buffer[global_pointer:global_pointer + samples_per_bin * 8]), 2)
+            if not ACK_confirmed[ACK_frame]:
+                print("ACK ", ACK_frame, " received!")
+                ACK_confirmed[ACK_frame] = True
+            global_pointer += 48
+        global_pointer += 1024
+    global_pointer = len(global_buffer) >> 2
+    res = True
+    for i in range(range1, range2):
+        if not ACK_confirmed[i]:
+            res = False
+            if time.time() - send_time[i] > retransmit_time and send_time[i] != 0:
+                frame_retransmit[i] += 1
+                if frame_retransmit[i] >= max_retransmit:
+                    print("link error! exit")
+                    exit(-1)
+                else:
+                    print("ACK ", i, " time out, time used: ", time.time() - send_time[i], ", retransmit")
+                    # retransmit
+                    TxFrame = data[i].get_modulated_frame()[:]
+                    send_athernet_data()
+                    send_time[i] = time.time()
+                    TxFrame = []
+                    res = False
+    return res
 
 
 def athernet_to_internet():
@@ -150,11 +192,17 @@ def internet_to_athernet():
     global TxFrame
     # then send data to node3
     frames = gen_data(all_data, (NAT_athernet_ip, NAT_port), (node3_ip, node3_port))
-
+    i = 0
     for frame in frames:
         TxFrame = frame.get_modulated_frame()[:]
         send_athernet_data()
         TxFrame = []
+        send_time[i] = time.time()
+        i += 1
+        if i % 9 == 0 and i >= 10:
+            check_ACK(0, i, frames)
+    while not check_ACK(0, frame_num, frames):
+        pass
     print("sending data to node3 finished")
 
 

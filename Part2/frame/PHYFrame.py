@@ -19,6 +19,7 @@ class PhyFrame:
      A physical frame has three parts:
      1. preamble
      2. physical load (MAC frame)
+     3. num
      The actual frame is the combination of 2 and 3
      So the class member doesn't contain preamble
      But every time we get the PHY frame in the form of array

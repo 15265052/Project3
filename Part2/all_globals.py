@@ -11,4 +11,9 @@ global_input_index = 0  # the global input index of data
 
 # for recording how many frames has been detected
 detected_frames = 0
-
+send_time = [0]*frame_num
+ACK_confirmed = [False]*frame_num
+frame_confirmed = [False] * frame_num
+frame_rece = [None] * frame_num
+frame_retransmit = [0] * frame_num
+max_retransmit = 7
