@@ -9,7 +9,7 @@ from Part2.config.ACKConfig import *
 
 
 def set_stream():
-    asio_id = 12
+    asio_id = 14
     asio_in = sd.AsioSettings(channel_selectors=[0])
     asio_out = sd.AsioSettings(channel_selectors=[1])
 
@@ -58,9 +58,8 @@ def callback(indata, outdata, frames, time, status):
 def gen_data(pre_data, src_address, dest_address):
     """translate payload into Athernet packet"""
     athernet_frames = []
-    input_index = 0
-    for i in frame_num:
-        data = pre_data[i*bytes_per_frame:(i+1)*bytes_per_frame]
+    for i in range(frame_num):
+        data = pre_data[0][i*bytes_per_frame:(i+1)*bytes_per_frame]
         frame = PhyFrame()
         frame.set_phy_load(MACFrame())
         frame.set_MAC_load(UDPFrame())
@@ -72,9 +71,9 @@ def gen_data(pre_data, src_address, dest_address):
         frame.set_num(i)
         byte_bit_str_buffer = ""
         for j in range(bytes_per_frame):
-            if input_index < len(data):
-                byte_bit_str_buffer += byte_to_str(data[input_index])
-                input_index += 1
+            if j < len(data):
+                bi = bin(data[j])[2:]
+                byte_bit_str_buffer += (8 - len(bi)) * "0" + bi
             else:
                 byte_bit_str_buffer += "00000000"
         frame.set_load(byte_bit_str_buffer)
@@ -228,6 +227,7 @@ def athernet_to_internet():
 def internet_to_athernet():
     # first to receive data from node1
     all_data = []
+    print("start receiving internet data")
     sck = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     address = (NAT_internet_ip, NAT_port)
     sck.bind(address)
@@ -237,6 +237,8 @@ def internet_to_athernet():
     sck.close()
     print("receiving from node1 finished")
 
+    stream = set_stream()
+    stream.start()
     global TxFrame
     # then send data to node3
     frames = gen_data(all_data, (NAT_athernet_ip, NAT_port), (node3_ip, node3_port))
@@ -246,8 +248,9 @@ def internet_to_athernet():
         send_athernet_data()
         TxFrame = []
         send_time[i] = time.time()
+        print("send ", frame.get_decimal_num(), "frame")
         i += 1
-        if i % 9 == 0 and i >= 10:
+        if i % 49 and i >= 49:
             check_ACK(0, i, frames)
     while not check_ACK(0, frame_num, frames):
         pass
