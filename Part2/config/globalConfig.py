@@ -24,7 +24,7 @@ def detect_preamble(block_buffer):
 
 
 def write_to_file(file_name, data):
-    with open(file_name, 'ab') as f:
+    with open(file_name, 'wb') as f:
         f.write(data)
 
 

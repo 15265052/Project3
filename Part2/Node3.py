@@ -1,11 +1,13 @@
 # Node3
 import struct
 
+import numpy as np
+
 from Part2.config.globalConfig import *
 from Part2.frame.PHYFrame import *
 from Part2.config.Type import *
 from all_globals import *
-
+from Part2.config.ACKConfig import *
 
 def set_stream():
     asio_id = 10
@@ -24,6 +26,7 @@ def callback(indata, outdata, frames, time, status):
     global global_pointer
     global global_status
     global TxFrame
+    global is_noisy
     global_buffer = np.append(global_buffer, indata[:, 0])
     if np.average(np.abs(indata[:, 0]) > 0.005):
         is_noisy = True
@@ -186,6 +189,7 @@ def send_ACK(n_frame):
 
 
 def receive_data():
+    global TxFrame
     stream = set_stream()
     stream.start()
     global global_buffer
@@ -195,17 +199,14 @@ def receive_data():
     src_port = None
     dest_ip = None
     dest_port = None
-    stream = set_stream()
-    stream.start()
     pointer = global_pointer
     UDP_payload = [None] * frame_num
-    while detected_frames < frame_num:
+    while detected_frames < frame_num or is_noisy:
         if pointer + block_size > len(global_buffer):
             continue
         block_buffer = global_buffer[pointer: pointer + block_size]
         pointer_frame = detect_preamble(block_buffer)
         if not pointer_frame == "error":
-            detected_frames += 1
             pointer += pointer_frame
             # detect a frame, first to check its correctness
             if pointer + frame_length - preamble_length > len(global_buffer):
@@ -231,14 +232,28 @@ def receive_data():
                 if dest_port is None:
                     dest_port = decode_port((phy_frame.get_dest_port()))
                 UDP_payload[n_frame] = str_to_byte(phy_frame.get_load())
-        else:
-            print("CRC broken!")
+            else:
+                print("CRC broken!")
+            pointer += frame_length - preamble_length
+            continue
         pointer += block_size
-
+    stream.stop()
     print("receiving data finished... showing contents...")
-    for content in UDP_payload:
-        print("IP: ", src_ip, " Port: ", src_port)
-        print("content: ", content)
+    with open("OUTPUT.txt", "w") as f:
+        all_str = ''
+        for content in UDP_payload:
+            print("IP: ", src_ip, " Port: ", src_port)
+            byte_str = b''
+            for s in content:
+                byte_str += s
+            byte_str = str(byte_str)[2:-1]
+            byte_str = byte_str.replace("\\r", "").replace("\\n", "\n").replace('\\x00', '')
+            all_str += byte_str
+            print("content: ", byte_str)
+        print(all_str)
+        f.write(all_str)
+
+
 
 
 receive_data()
